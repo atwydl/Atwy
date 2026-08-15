@@ -20,6 +20,12 @@ jobs:
           sudo xcode-select -s /Applications/Xcode_16.2.app
           xcodebuild -version
 
+      - name: Resolve Swift Packages
+        run: |
+          xcodebuild -project Atwy.xcodeproj \
+                     -scheme Atwy \
+                     -resolvePackageDependencies
+
       - name: Build Unsigned App
         run: |
           xcodebuild -project Atwy.xcodeproj \
