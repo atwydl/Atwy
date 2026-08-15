@@ -1,4 +1,4 @@
-name: Build Atwy IPA
+name: Build Atwy IPA for Real Device
 
 on:
   workflow_dispatch:
@@ -9,7 +9,7 @@ on:
 
 jobs:
   build:
-    name: Build Unsigned IPA
+    name: Build Unsigned IPA for Real Device
     runs-on: macos-15
 
     steps:
@@ -21,36 +21,48 @@ jobs:
           sudo xcode-select -s /Applications/Xcode_16.2.app
           xcodebuild -version
 
-      - name: List Available SDKs
-        run: xcodebuild -showsdks
-
-      - name: Build and Create IPA
+      - name: Clean Build
         run: |
-          # Build the app with explicit iOS SDK
+          xcodebuild -project Atwy.xcodeproj \
+                     -scheme Atwy \
+                     -configuration Debug \
+                     clean
+
+      - name: Build Archive for Real Device
+        run: |
           xcodebuild -project Atwy.xcodeproj \
                      -scheme Atwy \
                      -configuration Debug \
                      -sdk iphoneos \
-                     -derivedDataPath build \
-                     build \
+                     -arch arm64 \
+                     -archivePath build/Atwy.xcarchive \
+                     archive \
                      CODE_SIGN_IDENTITY="" \
                      CODE_SIGNING_REQUIRED=NO \
                      CODE_SIGNING_ALLOWED=NO \
-                     IPHONEOS_DEPLOYMENT_TARGET=17.0
-          
-          # Find and copy the app
-          APP_PATH=$(find build/Build/Products -name "Atwy.app" -type d | head -1)
-          echo "App found at: $APP_PATH"
-          
-          mkdir -p Payload
-          cp -R "$APP_PATH" Payload/
-          
-          # Create IPA
-          zip -r Atwy.ipa Payload/
+                     IPHONEOS_DEPLOYMENT_TARGET=17.0 \
+                     ONLY_ACTIVE_ARCH=NO
+
+      - name: Create IPA from Archive
+        run: |
+          if [ -d "build/Atwy.xcarchive/Products/Applications/Atwy.app" ]; then
+            echo "Archive created successfully!"
+            
+            # Verify it's built for arm64
+            file build/Atwy.xcarchive/Products/Applications/Atwy.app/Atwy
+            
+            mkdir -p Payload
+            cp -R build/Atwy.xcarchive/Products/Applications/Atwy.app Payload/
+            zip -r Atwy.ipa Payload/
+          else
+            echo "Archive creation failed!"
+            find build -type d
+            exit 1
+          fi
 
       - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
-          name: Atwy-IPA
+          name: Atwy-IPA-RealDevice
           path: Atwy.ipa
           retention-days: 30
