@@ -8,23 +8,34 @@ on:
 
 jobs:
   build:
-    name: iOS IPA build
-    runs-on: macos-15
+    name: Build Unsigned IPA
+    runs-on: macos-14
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Build Atwy
+      - name: Build Unsigned App
         run: |
-          xcodebuild -project Atwy.xcodeproj -scheme Atwy -archivePath build/Atwy.xcarchive archive CODE_SIGNING_ALLOWED="NO"
+          xcodebuild -project Atwy.xcodeproj \
+                     -scheme Atwy \
+                     -configuration Release \
+                     -sdk iphoneos \
+                     -derivedDataPath build \
+                     clean build \
+                     CODE_SIGN_IDENTITY="" \
+                     CODE_SIGNING_REQUIRED=NO \
+                     CODE_SIGNING_ALLOWED=NO
 
-      - name: Create IPA
+      - name: Create Unsigned IPA
         run: |
-          mkdir build/Payload && mv build/Atwy.xcarchive/Products/Applications/Atwy.app build/Payload/Atwy.app && cd build && zip -r Atwy.zip Payload/Atwy.app && mv Atwy.zip Atwy.ipa
+          mkdir -p build/Payload
+          cp -R build/Build/Products/Release-iphoneos/Atwy.app build/Payload/
+          cd build
+          zip -r Atwy.ipa Payload/
 
-      - name: Upload IPA
+      - name: Upload Unsigned IPA
         uses: actions/upload-artifact@v4
         with:
-          name: IPA
-          path: build/*.ipa
+          name: Atwy-Unsigned-IPA
+          path: build/Atwy.ipa
