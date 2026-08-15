@@ -2,7 +2,6 @@ name: Build Atwy IPA
 
 on:
   workflow_dispatch:
-    # Manual trigger only
   push:
     branches: [ "main" ]
   pull_request:
@@ -22,28 +21,24 @@ jobs:
           sudo xcode-select -s /Applications/Xcode_16.2.app
           xcodebuild -version
 
-      - name: Resolve Swift Packages
+      - name: Build and Create IPA
         run: |
-          xcodebuild -project Atwy.xcodeproj \
-                     -scheme Atwy \
-                     -resolvePackageDependencies
-
-      - name: Build Unsigned App
-        run: |
+          # Build the app
           xcodebuild -project Atwy.xcodeproj \
                      -scheme Atwy \
                      -configuration Debug \
-                     -sdk iphoneos \
                      -derivedDataPath build \
-                     clean build \
+                     -destination 'generic/platform=iOS' \
+                     build \
                      CODE_SIGN_IDENTITY="" \
                      CODE_SIGNING_REQUIRED=NO \
                      CODE_SIGNING_ALLOWED=NO
-
-      - name: Create IPA
-        run: |
+          
+          # Create Payload and copy app
           mkdir -p Payload
           cp -R build/Build/Products/Debug-iphoneos/Atwy.app Payload/
+          
+          # Create IPA
           zip -r Atwy.ipa Payload/
 
       - name: Upload IPA
