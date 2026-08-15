@@ -26,17 +26,20 @@ jobs:
                      -scheme Atwy \
                      -resolvePackageDependencies
 
-      - name: Build Unsigned App
+      - name: Build Unsigned App (with Swift version fix)
         run: |
           xcodebuild -project Atwy.xcodeproj \
                      -scheme Atwy \
                      -configuration Release \
                      -sdk iphoneos \
                      -derivedDataPath build \
+                     -destination 'generic/platform=iOS' \
                      clean build \
                      CODE_SIGN_IDENTITY="" \
                      CODE_SIGNING_REQUIRED=NO \
-                     CODE_SIGNING_ALLOWED=NO
+                     CODE_SIGNING_ALLOWED=NO \
+                     SWIFT_VERSION=5.0 \
+                     SWIFT_OPTIMIZATION_LEVEL=-O
 
       - name: Create Unsigned IPA
         run: |
