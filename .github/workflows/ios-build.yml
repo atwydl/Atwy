@@ -1,10 +1,12 @@
-name: iOS Build Workflow
+name: Build Atwy IPA
 
 on:
+  workflow_dispatch:
+    # Manual trigger only
   push:
-    branches: "**"
+    branches: [ "main" ]
   pull_request:
-    branches: "**"
+    branches: [ "main" ]
 
 jobs:
   build:
@@ -26,30 +28,27 @@ jobs:
                      -scheme Atwy \
                      -resolvePackageDependencies
 
-      - name: Build Unsigned App (with Swift version fix)
+      - name: Build Unsigned App
         run: |
           xcodebuild -project Atwy.xcodeproj \
                      -scheme Atwy \
-                     -configuration Release \
+                     -configuration Debug \
                      -sdk iphoneos \
                      -derivedDataPath build \
-                     -destination 'generic/platform=iOS' \
                      clean build \
                      CODE_SIGN_IDENTITY="" \
                      CODE_SIGNING_REQUIRED=NO \
-                     CODE_SIGNING_ALLOWED=NO \
-                     SWIFT_VERSION=5.0 \
-                     SWIFT_OPTIMIZATION_LEVEL=-O
+                     CODE_SIGNING_ALLOWED=NO
 
-      - name: Create Unsigned IPA
+      - name: Create IPA
         run: |
-          mkdir -p build/Payload
-          cp -R build/Build/Products/Release-iphoneos/Atwy.app build/Payload/
-          cd build
+          mkdir -p Payload
+          cp -R build/Build/Products/Debug-iphoneos/Atwy.app Payload/
           zip -r Atwy.ipa Payload/
 
-      - name: Upload Unsigned IPA
+      - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
-          name: Atwy-Unsigned-IPA
-          path: build/Atwy.ipa
+          name: Atwy-IPA
+          path: Atwy.ipa
+          retention-days: 30
