@@ -1,45 +1,52 @@
-name: Build Atwy IPA
-
+name: iOS Build Workflow
 on:
-  workflow_dispatch:
   push:
-    branches: [ "main" ]
+    branches: "**"
   pull_request:
-    branches: [ "main" ]
+    branches: "**"
 
 jobs:
   build:
-    name: Build IPA
+    name: iOS IPA build
     runs-on: macos-15
-
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout Repository
+        uses: actions/checkout@v4
 
-      - name: Select Xcode
-        run: sudo xcode-select -s /Applications/Xcode_16.2.app
+      - name: Select Xcode version
+        run: sudo xcode-select -s /Applications/Xcode_16.app
 
-      - name: Build
+      - name: Build Atwy (unsigned, device build)
         run: |
-          xcodebuild -project Atwy.xcodeproj \
-                     -scheme Atwy \
-                     -configuration Debug \
-                     -sdk iphoneos \
-                     -arch arm64 \
-                     -derivedDataPath build \
-                     clean build \
-                     CODE_SIGN_IDENTITY="" \
-                     CODE_SIGNING_REQUIRED=NO \
-                     CODE_SIGNING_ALLOWED=NO \
-                     IPHONEOS_DEPLOYMENT_TARGET=17.0
+          xcodebuild \
+            -project Atwy.xcodeproj \
+            -scheme Atwy \
+            -configuration Release \
+            -destination "generic/platform=iOS" \
+            -archivePath build/Atwy.xcarchive \
+            archive \
+            CODE_SIGNING_ALLOWED="NO" \
+            CODE_SIGNING_REQUIRED="NO" \
+            CODE_SIGN_IDENTITY="" \
+            AD_HOC_CODE_SIGNING_ALLOWED="NO" \
+            DEVELOPMENT_TEAM="" \
+            PROVISIONING_PROFILE_SPECIFIER=""
 
       - name: Package IPA
         run: |
-          mkdir -p Payload
-          cp -R build/Build/Products/Debug-iphoneos/Atwy.app Payload/
-          zip -r Atwy.ipa Payload/
+          mkdir -p build/Payload
+          cp -R build/Atwy.xcarchive/Products/Applications/Atwy.app build/Payload/Atwy.app
+          cd build
+          /usr/bin/ditto -c -k --sequesterRsrc --keepParent Payload Atwy.ipa
 
-      - name: Upload
+      - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
-          name: Atwy-IPA
-          path: Atwy.ipa
+          name: Atwy-unsigned-ipa
+          path: build/Atwy.ipa
+
+      - name: Upload dSYMs
+        uses: actions/upload-artifact@v4
+        with:
+          name: Atwy-dSYMs
+          path: build/Atwy.xcarchive/dSYMs
