@@ -21,11 +21,8 @@ jobs:
       - name: Remove Unsupported Entitlements
         run: |
           APP_PATH="build/Atwy.xcarchive/Products/Applications/Atwy.app"
-          # Extract current entitlements from the binary
-          codesign -d --entitlements - "$APP_PATH" > entitlements.plist 2>/dev/null || true
-          # Remove the group-session entitlement your cert doesn't support
+          codesign -d --entitlements :- "$APP_PATH" > entitlements.plist
           /usr/libexec/PlistBuddy -c "Delete :com.apple.developer.group-session" entitlements.plist 2>/dev/null || true
-          # Re-sign with corrected entitlements (ad-hoc since CI has no cert)
           codesign --force --deep -s - --entitlements entitlements.plist "$APP_PATH"
 
       - name: Create IPA
