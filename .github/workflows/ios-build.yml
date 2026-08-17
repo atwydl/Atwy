@@ -19,10 +19,20 @@ jobs:
         run: |
           ENTITLEMENTS_FILE=$(find . -name "*.entitlements" | head -1)
           if [ -n "$ENTITLEMENTS_FILE" ]; then
-            echo "Patching: $ENTITLEMENTS_FILE"
             /usr/libexec/PlistBuddy -c "Delete :com.apple.developer.group-session" "$ENTITLEMENTS_FILE" 2>/dev/null || true
-            cat "$ENTITLEMENTS_FILE"
           fi
+
+      - name: Patch App Group References
+        run: |
+          echo "=== Files referencing app group ==="
+          grep -rn "group.Antoine-Bollengier.Atwy" . --include="*.swift" || echo "No references found"
+          echo "==================================="
+          
+          find . -name "*.swift" -exec sed -i '' \
+            's/UserDefaults(suiteName: "group.Antoine-Bollengier.Atwy")!/UserDefaults(suiteName: "group.Antoine-Bollengier.Atwy") ?? UserDefaults.standard/g' {} +
+          
+          find . -name "*.swift" -exec sed -i '' \
+            's/FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.Antoine-Bollengier.Atwy")!/FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!/g' {} +
 
       - name: Build Atwy
         run: xcodebuild -project Atwy.xcodeproj -scheme Atwy -archivePath build/Atwy.xcarchive archive CODE_SIGNING_ALLOWED="NO"
