@@ -1,4 +1,5 @@
 name: iOS Build Workflow
+
 on:
   push:
     branches: "**"
@@ -9,44 +10,30 @@ jobs:
   build:
     name: iOS IPA build
     runs-on: macos-15
+
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Show Xcode version
-        run: xcodebuild -version
+      - name: Build Atwy
+        run: xcodebuild -project Atwy.xcodeproj -scheme Atwy -archivePath build/Atwy.xcarchive archive CODE_SIGNING_ALLOWED="NO"
 
-      - name: Build Atwy (unsigned, device build)
+      - name: Remove Unsupported Entitlements
         run: |
-          xcodebuild \
-            -project Atwy.xcodeproj \
-            -scheme Atwy \
-            -configuration Release \
-            -destination "generic/platform=iOS" \
-            -archivePath build/Atwy.xcarchive \
-            archive \
-            CODE_SIGNING_ALLOWED="NO" \
-            CODE_SIGNING_REQUIRED="NO" \
-            CODE_SIGN_IDENTITY="" \
-            AD_HOC_CODE_SIGNING_ALLOWED="NO" \
-            DEVELOPMENT_TEAM="" \
-            PROVISIONING_PROFILE_SPECIFIER=""
+          APP_PATH="build/Atwy.xcarchive/Products/Applications/Atwy.app"
+          # Extract current entitlements from the binary
+          codesign -d --entitlements - "$APP_PATH" > entitlements.plist 2>/dev/null || true
+          # Remove the group-session entitlement your cert doesn't support
+          /usr/libexec/PlistBuddy -c "Delete :com.apple.developer.group-session" entitlements.plist 2>/dev/null || true
+          # Re-sign with corrected entitlements (ad-hoc since CI has no cert)
+          codesign --force --deep -s - --entitlements entitlements.plist "$APP_PATH"
 
-      - name: Package IPA
+      - name: Create IPA
         run: |
-          mkdir -p build/Payload
-          cp -R build/Atwy.xcarchive/Products/Applications/Atwy.app build/Payload/Atwy.app
-          cd build
-          /usr/bin/ditto -c -k --sequesterRsrc --keepParent Payload Atwy.ipa
+          mkdir build/Payload && mv build/Atwy.xcarchive/Products/Applications/Atwy.app build/Payload/Atwy.app && cd build && zip -r Atwy.zip Payload/Atwy.app && mv Atwy.zip Atwy.ipa
 
       - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
-          name: Atwy-unsigned-ipa
-          path: build/Atwy.ipa
-
-      - name: Upload dSYMs
-        uses: actions/upload-artifact@v4
-        with:
-          name: Atwy-dSYMs
-          path: build/Atwy.xcarchive/dSYMs
+          name: IPA
+          path: build/*.ipa
