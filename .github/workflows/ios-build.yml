@@ -15,28 +15,17 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      - name: Remove Unsupported Entitlements From Source
+        run: |
+          ENTITLEMENTS_FILE=$(find . -name "*.entitlements" | head -1)
+          if [ -n "$ENTITLEMENTS_FILE" ]; then
+            echo "Patching: $ENTITLEMENTS_FILE"
+            /usr/libexec/PlistBuddy -c "Delete :com.apple.developer.group-session" "$ENTITLEMENTS_FILE" 2>/dev/null || true
+            cat "$ENTITLEMENTS_FILE"
+          fi
+
       - name: Build Atwy
         run: xcodebuild -project Atwy.xcodeproj -scheme Atwy -archivePath build/Atwy.xcarchive archive CODE_SIGNING_ALLOWED="NO"
-
-      - name: Create Entitlements Without Group Session
-        run: |
-          cat > entitlements.plist << 'EOF'
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-            <key>com.apple.security.application-groups</key>
-            <array>
-              <string>group.Antoine-Bollengier.Atwy</string>
-            </array>
-          </dict>
-          </plist>
-          EOF
-
-      - name: Ad-hoc Sign With Fixed Entitlements
-        run: |
-          APP_PATH="build/Atwy.xcarchive/Products/Applications/Atwy.app"
-          codesign --force --deep -s - --entitlements entitlements.plist "$APP_PATH"
 
       - name: Create IPA
         run: |
